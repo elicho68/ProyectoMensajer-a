@@ -16,8 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.easychat.R
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.*
-import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun RegisterScreen(onRegisterSuccess: () -> Unit, onLogin: () -> Unit) {
@@ -28,16 +28,31 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onLogin: () -> Unit) {
     var errorMessage by remember { mutableStateOf("") }
     var isRegistered by remember { mutableStateOf(false) }
 
-    // Inicializar FirebaseAuth correctamente
     val auth = FirebaseAuth.getInstance()
+    val db = FirebaseFirestore.getInstance() // 🔹 Agregamos Firestore
 
     fun registerUser() {
         if (email.isNotBlank() && password.length >= 6) {
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        errorMessage = "Registro exitoso. Redirigiendo..."
-                        isRegistered = true
+                        val userId = auth.currentUser?.uid
+                        if (userId != null) {
+                            val user = hashMapOf(
+                                "firstName" to firstName,
+                                "lastName" to lastName,
+                                "email" to email
+                            )
+                            // 🔹 Guardar usuario en Firestore en la colección "users"
+                            db.collection("users").document(userId).set(user)
+                                .addOnSuccessListener {
+                                    errorMessage = "Registro exitoso. Redirigiendo..."
+                                    isRegistered = true
+                                }
+                                .addOnFailureListener {
+                                    errorMessage = "Error al guardar usuario en Firestore"
+                                }
+                        }
                     } else {
                         errorMessage = when {
                             task.exception?.message?.contains("The email address is already in use") == true ->
@@ -61,7 +76,7 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onLogin: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF007AFF)) // Fondo azul
+            .background(Color(0xFF007AFF))
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -86,8 +101,6 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onLogin: () -> Unit) {
                 label = { Text("Nombre", color = Color.White) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
                     focusedIndicatorColor = Color.White,
@@ -103,8 +116,6 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onLogin: () -> Unit) {
                 label = { Text("Apellido", color = Color.White) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
                     focusedIndicatorColor = Color.White,
@@ -120,8 +131,6 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onLogin: () -> Unit) {
                 label = { Text("Correo Electrónico", color = Color.White) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
                     focusedIndicatorColor = Color.White,
@@ -138,8 +147,6 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onLogin: () -> Unit) {
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
                     focusedIndicatorColor = Color.White,
